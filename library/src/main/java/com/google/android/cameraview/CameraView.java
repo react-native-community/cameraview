@@ -82,12 +82,24 @@ public class CameraView extends FrameLayout {
 
     private final DisplayOrientationDetector mDisplayOrientationDetector;
 
+    public CameraView(Context context) {
+        this(context, null, false);
+    }
+
     public CameraView(Context context, boolean fallbackToOldApi) {
         this(context, null, fallbackToOldApi);
     }
 
+    public CameraView(Context context, AttributeSet attrs) {
+        this(context, attrs, 0, false);
+    }
+
     public CameraView(Context context, AttributeSet attrs, boolean fallbackToOldApi) {
         this(context, attrs, 0, fallbackToOldApi);
+    }
+
+    public CameraView(Context context, AttributeSet attrs, int defStyleAttr) {
+        this(context, attrs, defStyleAttr, false);
     }
 
     @SuppressWarnings("WrongConstant")
