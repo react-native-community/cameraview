@@ -39,4 +39,7 @@ public interface Constants {
     int WB_FLUORESCENT = 4;
     int WB_INCANDESCENT = 5;
 
+    int GRAVITY_NONE = 0;
+    int GRAVITY_CENTER_FILL = 1;
+    int GRAVITY_CENTER_FIT = 2;
 }
