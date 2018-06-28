@@ -18,6 +18,7 @@ package com.google.android.cameraview;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.media.CamcorderProfile;
 import android.os.Build;
 import android.os.Parcel;
@@ -122,7 +123,6 @@ public class CameraView extends FrameLayout {
             mDisplayOrientationDetector = null;
             return;
         }
-        mAdjustViewBounds = true;
         mContext = context;
 
         // Internal setup
@@ -135,6 +135,22 @@ public class CameraView extends FrameLayout {
         } else {
             mImpl = new Camera2Api23(mCallbacks, preview, context);
         }
+
+        // Attributes
+        TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CameraView, defStyleAttr,
+                R.style.Widget_CameraView);
+        mAdjustViewBounds = a.getBoolean(R.styleable.CameraView_android_adjustViewBounds, false);
+        setFacing(a.getInt(R.styleable.CameraView_facing, FACING_BACK));
+        String aspectRatio = a.getString(R.styleable.CameraView_aspectRatio);
+        if (aspectRatio != null) {
+            setAspectRatio(AspectRatio.parse(aspectRatio));
+        } else {
+            setAspectRatio(Constants.DEFAULT_ASPECT_RATIO);
+        }
+        setAutoFocus(a.getBoolean(R.styleable.CameraView_autoFocus, true));
+        setFlash(a.getInt(R.styleable.CameraView_flash, FLASH_AUTO));
+        setGravity(a.getInt(R.styleable.CameraView_gravity, GRAVITY_NONE));
+        a.recycle();
 
         // Display orientation detector
         mDisplayOrientationDetector = new DisplayOrientationDetector(context) {
