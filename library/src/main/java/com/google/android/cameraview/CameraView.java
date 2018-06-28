@@ -72,11 +72,23 @@ public class CameraView extends FrameLayout {
     public @interface Flash {
     }
 
+    public static final int GRAVITY_NONE = Constants.GRAVITY_NONE;
+
+    public static final int GRAVITY_CENTER_FILL = Constants.GRAVITY_CENTER_FILL;
+
+    public static final int GRAVITY_CENTER_FIT = Constants.GRAVITY_CENTER_FIT;
+
+    @IntDef({GRAVITY_NONE, GRAVITY_CENTER_FILL, GRAVITY_CENTER_FIT})
+    public @interface Gravity {
+    }
+
     CameraViewImpl mImpl;
 
     private final CallbackBridge mCallbacks;
 
     private boolean mAdjustViewBounds;
+
+    private int mGravity = GRAVITY_NONE;
 
     private Context mContext;
 
@@ -231,6 +243,7 @@ public class CameraView extends FrameLayout {
         state.zoom = getZoom();
         state.whiteBalance = getWhiteBalance();
         state.scanning = getScanning();
+        state.gravity = getGravity();
         return state;
     }
 
@@ -250,6 +263,7 @@ public class CameraView extends FrameLayout {
         setZoom(ss.zoom);
         setWhiteBalance(ss.whiteBalance);
         setScanning(ss.scanning);
+        setGravity(ss.gravity);
     }
 
     public void setUsingCamera2Api(boolean useCamera2) {
@@ -456,6 +470,15 @@ public class CameraView extends FrameLayout {
         return mImpl.getFlash();
     }
 
+    public void setGravity(@Gravity int gravity) {
+        mGravity = gravity;
+    }
+
+    @Gravity
+    public int getGravity() {
+        return mGravity;
+    }
+
     public void setFocusDepth(float value) {
         mImpl.setFocusDepth(value);
     }
@@ -603,6 +626,9 @@ public class CameraView extends FrameLayout {
 
         boolean scanning;
 
+        @Gravity
+        int gravity;
+
         @SuppressWarnings("WrongConstant")
         public SavedState(Parcel source, ClassLoader loader) {
             super(source);
@@ -614,6 +640,7 @@ public class CameraView extends FrameLayout {
             zoom = source.readFloat();
             whiteBalance = source.readInt();
             scanning = source.readByte() != 0;
+            gravity = source.readInt();
         }
 
         public SavedState(Parcelable superState) {
@@ -631,6 +658,7 @@ public class CameraView extends FrameLayout {
             out.writeFloat(zoom);
             out.writeInt(whiteBalance);
             out.writeByte((byte) (scanning ? 1 : 0));
+            out.writeInt(gravity);
         }
 
         public static final Creator<SavedState> CREATOR
