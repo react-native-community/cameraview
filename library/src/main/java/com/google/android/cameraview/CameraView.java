@@ -219,7 +219,11 @@ public class CameraView extends FrameLayout {
             ratio = ratio.inverse();
         }
         assert ratio != null;
-        if (height < width * ratio.getY() / ratio.getX()) {
+        boolean widthPriority = height < width * ratio.getY() / ratio.getX();
+        if (mGravity == GRAVITY_CENTER_FIT) {
+            widthPriority = !widthPriority;
+        }
+        if (widthPriority) {
             mImpl.getView().measure(
                     MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
                     MeasureSpec.makeMeasureSpec(width * ratio.getY() / ratio.getX(),
@@ -230,6 +234,67 @@ public class CameraView extends FrameLayout {
                             MeasureSpec.EXACTLY),
                     MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY));
         }
+    }
+
+    @Override
+    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+        View preview = getView();
+        if (null == preview) {
+            return;
+        }
+
+        if (mGravity == GRAVITY_NONE) {
+            super.onLayout(changed, left, top, right, bottom);
+            return;
+        }
+
+        float width = right - left;
+        float height = bottom - top;
+        float ratio = getAspectRatio().toFloat();
+        int correctHeight = (int)width;
+        int correctWidth = (int)height;
+
+        if (mGravity == GRAVITY_CENTER_FILL) {
+            if (mDisplayOrientationDetector.getLastKnownDisplayOrientation() % 180 != 0) {
+                if (ratio * height < width) {
+                    correctHeight = (int) (width / ratio);
+                    correctWidth = (int) width;
+                } else {
+                    correctWidth = (int) (height * ratio);
+                    correctHeight = (int) height;
+                }
+            } else {
+                if (ratio * width > height) {
+                    correctHeight = (int) (width * ratio);
+                    correctWidth = (int) width;
+                } else {
+                    correctWidth = (int) (height / ratio);
+                    correctHeight = (int) height;
+                }
+            }
+        } else if (mGravity == GRAVITY_CENTER_FIT) {
+            if (mDisplayOrientationDetector.getLastKnownDisplayOrientation() % 180 != 0) {
+                if (ratio * height > width) {
+                    correctHeight = (int) (width / ratio);
+                    correctWidth = (int) width;
+                } else {
+                    correctWidth = (int) (height * ratio);
+                    correctHeight = (int) height;
+                }
+            } else {
+                if (ratio * width < height) {
+                    correctHeight = (int) (width * ratio);
+                    correctWidth = (int) width;
+                } else {
+                    correctWidth = (int) (height / ratio);
+                    correctHeight = (int) height;
+                }
+            }
+        }
+
+        int paddingX = (int) ((width - correctWidth) / 2);
+        int paddingY = (int) ((height - correctHeight) / 2);
+        preview.layout(paddingX, paddingY, correctWidth + paddingX, correctHeight + paddingY);
     }
 
     @Override
