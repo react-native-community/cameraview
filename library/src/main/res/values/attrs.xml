@@ -54,5 +54,21 @@
             -->
             <enum name="redEye" value="4"/>
         </attr>
+        <!-- Camera preview gravity. -->
+        <attr name="gravity" format="enum">
+            <!-- No additional adjustment to the camera preview applied. -->
+            <enum name="none" value="0"/>
+            <!--
+                Camera preview fills available area keeping it's ratio.
+                Preview cropped horizontally or vertically.
+             -->
+            <enum name="centerFill" value="1"/>
+            <!--
+                Camera preview fits available area keeping it's ratio.
+                Preview scaled down a bit with added horizontal or vertical spaces around.
+             -->
+            <enum name="centerFit" value="2"/>
+        </attr>
+
     </declare-styleable>
 </resources>

@@ -240,6 +240,16 @@ class Camera2 extends CameraViewImpl implements MediaRecorder.OnInfoListener, Me
 
     private Rect mInitialCropRegion;
 
+    /**
+     * AllowLegacy used for testing to let chooseCameraIdByFacing() pass through
+     * INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY check.
+     * This is useful when we want to enable Camera2 usage on emulators, that always return
+     * level=LEGACY
+     *
+     * Set <b>true</b> to allow hardware legacy level
+     */
+    private boolean mAllowLegacy = false;
+
     Camera2(Callback callback, PreviewImpl preview, Context context) {
         super(callback, preview);
         mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
@@ -591,7 +601,8 @@ class Camera2 extends CameraViewImpl implements MediaRecorder.OnInfoListener, Me
                 Integer level = characteristics.get(
                         CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL);
                 if (level == null ||
-                        level == CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY) {
+                        (level == CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY &&
+                            !mAllowLegacy)) {
                     continue;
                 }
                 Integer internal = characteristics.get(CameraCharacteristics.LENS_FACING);
@@ -610,7 +621,8 @@ class Camera2 extends CameraViewImpl implements MediaRecorder.OnInfoListener, Me
             Integer level = mCameraCharacteristics.get(
                     CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL);
             if (level == null ||
-                    level == CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY) {
+                    (level == CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY &&
+                        !mAllowLegacy)) {
                 return false;
             }
             Integer internal = mCameraCharacteristics.get(CameraCharacteristics.LENS_FACING);

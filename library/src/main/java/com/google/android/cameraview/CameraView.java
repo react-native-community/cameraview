@@ -18,6 +18,7 @@ package com.google.android.cameraview;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.media.CamcorderProfile;
 import android.os.Build;
 import android.os.Parcel;
@@ -72,22 +73,46 @@ public class CameraView extends FrameLayout {
     public @interface Flash {
     }
 
+    public static final int GRAVITY_NONE = Constants.GRAVITY_NONE;
+
+    public static final int GRAVITY_CENTER_FILL = Constants.GRAVITY_CENTER_FILL;
+
+    public static final int GRAVITY_CENTER_FIT = Constants.GRAVITY_CENTER_FIT;
+
+    @IntDef({GRAVITY_NONE, GRAVITY_CENTER_FILL, GRAVITY_CENTER_FIT})
+    public @interface Gravity {
+    }
+
     CameraViewImpl mImpl;
 
     private final CallbackBridge mCallbacks;
 
     private boolean mAdjustViewBounds;
 
+    private int mGravity = GRAVITY_NONE;
+
     private Context mContext;
 
     private final DisplayOrientationDetector mDisplayOrientationDetector;
+
+    public CameraView(Context context) {
+        this(context, null, false);
+    }
 
     public CameraView(Context context, boolean fallbackToOldApi) {
         this(context, null, fallbackToOldApi);
     }
 
+    public CameraView(Context context, AttributeSet attrs) {
+        this(context, attrs, 0, false);
+    }
+
     public CameraView(Context context, AttributeSet attrs, boolean fallbackToOldApi) {
         this(context, attrs, 0, fallbackToOldApi);
+    }
+
+    public CameraView(Context context, AttributeSet attrs, int defStyleAttr) {
+        this(context, attrs, defStyleAttr, false);
     }
 
     @SuppressWarnings("WrongConstant")
@@ -98,7 +123,6 @@ public class CameraView extends FrameLayout {
             mDisplayOrientationDetector = null;
             return;
         }
-        mAdjustViewBounds = true;
         mContext = context;
 
         // Internal setup
@@ -111,6 +135,22 @@ public class CameraView extends FrameLayout {
         } else {
             mImpl = new Camera2Api23(mCallbacks, preview, context);
         }
+
+        // Attributes
+        TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CameraView, defStyleAttr,
+                R.style.Widget_CameraView);
+        mAdjustViewBounds = a.getBoolean(R.styleable.CameraView_android_adjustViewBounds, false);
+        setFacing(a.getInt(R.styleable.CameraView_facing, FACING_BACK));
+        String aspectRatio = a.getString(R.styleable.CameraView_aspectRatio);
+        if (aspectRatio != null) {
+            setAspectRatio(AspectRatio.parse(aspectRatio));
+        } else {
+            setAspectRatio(Constants.DEFAULT_ASPECT_RATIO);
+        }
+        setAutoFocus(a.getBoolean(R.styleable.CameraView_autoFocus, true));
+        setFlash(a.getInt(R.styleable.CameraView_flash, FLASH_AUTO));
+        setGravity(a.getInt(R.styleable.CameraView_gravity, GRAVITY_NONE));
+        a.recycle();
 
         // Display orientation detector
         mDisplayOrientationDetector = new DisplayOrientationDetector(context) {
@@ -195,7 +235,11 @@ public class CameraView extends FrameLayout {
             ratio = ratio.inverse();
         }
         assert ratio != null;
-        if (height < width * ratio.getY() / ratio.getX()) {
+        boolean widthPriority = height < width * ratio.getY() / ratio.getX();
+        if (mGravity == GRAVITY_CENTER_FIT) {
+            widthPriority = !widthPriority;
+        }
+        if (widthPriority) {
             mImpl.getView().measure(
                     MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
                     MeasureSpec.makeMeasureSpec(width * ratio.getY() / ratio.getX(),
@@ -209,6 +253,67 @@ public class CameraView extends FrameLayout {
     }
 
     @Override
+    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+        View preview = getView();
+        if (null == preview) {
+            return;
+        }
+
+        if (mGravity == GRAVITY_NONE) {
+            super.onLayout(changed, left, top, right, bottom);
+            return;
+        }
+
+        float width = right - left;
+        float height = bottom - top;
+        float ratio = getAspectRatio().toFloat();
+        int correctHeight = (int)width;
+        int correctWidth = (int)height;
+
+        if (mGravity == GRAVITY_CENTER_FILL) {
+            if (mDisplayOrientationDetector.getLastKnownDisplayOrientation() % 180 != 0) {
+                if (ratio * height < width) {
+                    correctHeight = (int) (width / ratio);
+                    correctWidth = (int) width;
+                } else {
+                    correctWidth = (int) (height * ratio);
+                    correctHeight = (int) height;
+                }
+            } else {
+                if (ratio * width > height) {
+                    correctHeight = (int) (width * ratio);
+                    correctWidth = (int) width;
+                } else {
+                    correctWidth = (int) (height / ratio);
+                    correctHeight = (int) height;
+                }
+            }
+        } else if (mGravity == GRAVITY_CENTER_FIT) {
+            if (mDisplayOrientationDetector.getLastKnownDisplayOrientation() % 180 != 0) {
+                if (ratio * height > width) {
+                    correctHeight = (int) (width / ratio);
+                    correctWidth = (int) width;
+                } else {
+                    correctWidth = (int) (height * ratio);
+                    correctHeight = (int) height;
+                }
+            } else {
+                if (ratio * width < height) {
+                    correctHeight = (int) (width * ratio);
+                    correctWidth = (int) width;
+                } else {
+                    correctWidth = (int) (height / ratio);
+                    correctHeight = (int) height;
+                }
+            }
+        }
+
+        int paddingX = (int) ((width - correctWidth) / 2);
+        int paddingY = (int) ((height - correctHeight) / 2);
+        preview.layout(paddingX, paddingY, correctWidth + paddingX, correctHeight + paddingY);
+    }
+
+    @Override
     protected Parcelable onSaveInstanceState() {
         SavedState state = new SavedState(super.onSaveInstanceState());
         state.facing = getFacing();
@@ -219,6 +324,7 @@ public class CameraView extends FrameLayout {
         state.zoom = getZoom();
         state.whiteBalance = getWhiteBalance();
         state.scanning = getScanning();
+        state.gravity = getGravity();
         return state;
     }
 
@@ -238,6 +344,7 @@ public class CameraView extends FrameLayout {
         setZoom(ss.zoom);
         setWhiteBalance(ss.whiteBalance);
         setScanning(ss.scanning);
+        setGravity(ss.gravity);
     }
 
     public void setUsingCamera2Api(boolean useCamera2) {
@@ -444,6 +551,15 @@ public class CameraView extends FrameLayout {
         return mImpl.getFlash();
     }
 
+    public void setGravity(@Gravity int gravity) {
+        mGravity = gravity;
+    }
+
+    @Gravity
+    public int getGravity() {
+        return mGravity;
+    }
+
     public void setFocusDepth(float value) {
         mImpl.setFocusDepth(value);
     }
@@ -591,6 +707,9 @@ public class CameraView extends FrameLayout {
 
         boolean scanning;
 
+        @Gravity
+        int gravity;
+
         @SuppressWarnings("WrongConstant")
         public SavedState(Parcel source, ClassLoader loader) {
             super(source);
@@ -602,6 +721,7 @@ public class CameraView extends FrameLayout {
             zoom = source.readFloat();
             whiteBalance = source.readInt();
             scanning = source.readByte() != 0;
+            gravity = source.readInt();
         }
 
         public SavedState(Parcelable superState) {
@@ -619,6 +739,7 @@ public class CameraView extends FrameLayout {
             out.writeFloat(zoom);
             out.writeInt(whiteBalance);
             out.writeByte((byte) (scanning ? 1 : 0));
+            out.writeInt(gravity);
         }
 
         public static final Creator<SavedState> CREATOR
